@@ -71,9 +71,7 @@ def schedule(
     interval_hours: float | None = typer.Option(
         None, help="If set, run every N hours instead of daily at --at."
     ),
-    timezone: str = typer.Option(
-        "Asia/Seoul", help="IANA timezone for the daily schedule."
-    ),
+    timezone: str = typer.Option("Asia/Seoul", help="IANA timezone for the daily schedule."),
     run_now: bool = typer.Option(
         False, "--run-now", help="Execute one collection immediately, then schedule."
     ),
@@ -92,7 +90,7 @@ def schedule(
         hour, minute = int(hh), int(mm)
     except ValueError as e:
         typer.echo(f"--at must be HH:MM (got {at!r}): {e}")
-        raise typer.Exit(2)
+        raise typer.Exit(2) from None
 
     schedule_daily(cfg, hour=hour, minute=minute, timezone=timezone, run_now=run_now)
 

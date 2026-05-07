@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -10,7 +10,7 @@ TICKERS_DIR = DATA_DIR / "_tickers"
 LOG_DIR = REPO_ROOT / "logs"
 
 
-class Market(str, Enum):
+class Market(StrEnum):
     kospi = "kospi"
     nasdaq = "nasdaq"
 
