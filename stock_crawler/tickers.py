@@ -15,9 +15,7 @@ log = logging.getLogger(__name__)
 
 # ---------- KOSPI: Naver Finance market-cap ranking (free, no auth) ----------
 
-NAVER_MARKET_SUM_URL = (
-    "https://finance.naver.com/sise/sise_market_sum.naver?sosok=0&page={page}"
-)
+NAVER_MARKET_SUM_URL = "https://finance.naver.com/sise/sise_market_sum.naver?sosok=0&page={page}"
 NAVER_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) "
@@ -113,9 +111,7 @@ def fetch_nasdaq_top(n: int) -> pd.DataFrame:
         "exchange": "NASDAQ",
         "download": "true",
     }
-    resp = requests.get(
-        NASDAQ_SCREENER_URL, params=params, headers=NASDAQ_HEADERS, timeout=20
-    )
+    resp = requests.get(NASDAQ_SCREENER_URL, params=params, headers=NASDAQ_HEADERS, timeout=20)
     resp.raise_for_status()
     payload = resp.json()
     data = payload.get("data") or {}

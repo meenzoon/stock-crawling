@@ -28,9 +28,7 @@ def fetch_yfinance(symbol: str, start: date | None = None) -> pd.DataFrame:
     if start is None:
         df = t.history(period="max", auto_adjust=False, actions=False)
     else:
-        df = t.history(
-            start=start.strftime("%Y-%m-%d"), auto_adjust=False, actions=False
-        )
+        df = t.history(start=start.strftime("%Y-%m-%d"), auto_adjust=False, actions=False)
     if df is None or df.empty:
         return pd.DataFrame(columns=OHLCV_COLUMNS)
 

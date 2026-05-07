@@ -57,7 +57,5 @@ def schedule_interval(cfg: CrawlConfig, hours: float, run_now: bool = False) -> 
         id=f"interval-{cfg.market.value}",
         replace_existing=True,
     )
-    log.info(
-        "Scheduled %s collection every %.2f hours", cfg.market.value, hours
-    )
+    log.info("Scheduled %s collection every %.2f hours", cfg.market.value, hours)
     sched.start()

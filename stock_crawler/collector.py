@@ -16,9 +16,7 @@ from .tickers import resolve_tickers
 log = logging.getLogger(__name__)
 
 
-def _fetch_with_retry(
-    cfg: CrawlConfig, ticker: str, start: date | None
-) -> pd.DataFrame:
+def _fetch_with_retry(cfg: CrawlConfig, ticker: str, start: date | None) -> pd.DataFrame:
     last_err: Exception | None = None
     for attempt in range(1, cfg.max_retries + 1):
         try:
