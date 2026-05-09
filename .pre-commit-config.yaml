@@ -1,0 +1,19 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+repos:
+  # Ruff - 빠른 Python linter & formatter (Flake8(linter) + isort(자동 정렬) + Black(formatting) 역할 통합)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.7
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # Bandit - Python 보안 취약점 검사
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]
+
