@@ -22,6 +22,8 @@ class CrawlConfig:
     log_dir: Path = LOG_DIR
     request_delay: float = 0.3
     max_retries: int = 3
+    max_per_minute: int = 30
+    jitter: float = 0.1
 
     @property
     def market_data_dir(self) -> Path:

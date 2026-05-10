@@ -43,6 +43,20 @@ uv run python main.py fetch --market nasdaq --top 200
 - 두 번째 실행 이후: CSV 마지막 날짜 다음 날부터만 받아 **증분 업데이트**합니다.
 - 이미 수집한 종목 목록을 다시 산정하고 싶으면 `--refresh-tickers`를 붙이세요.
 
+#### Throttling
+
+yfinance / Yahoo는 짧은 시간에 호출이 몰리면 429를 던지므로, 수집기는 **호출 간 최소 간격**과 **분당 최대 호출 수**를 함께 강제합니다. 기본값은 보수적입니다.
+
+```bash
+uv run python main.py fetch --market kospi --top 200 \
+    --request-delay 0.3 \
+    --max-per-minute 30
+```
+
+- `--request-delay`: 직전 호출 종료 후 다음 호출까지의 최소 대기 시간(초). 기본 0.3.
+- `--max-per-minute`: 직전 60초 동안 허용되는 최대 호출 수. 기본 30. `0`이면 윈도우 캡 비활성.
+- 재시도 시에도 동일하게 throttle이 적용되며, 응답에 `429` / `Too Many Requests`가 포함되면 백오프가 더 길게 적용됩니다.
+
 ### 2-3. 정기 수집 스케줄링
 
 매일 18:00에 KOSPI 시총 200 일봉을 수집:

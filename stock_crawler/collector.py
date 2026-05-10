@@ -9,19 +9,34 @@ from tqdm import tqdm
 from .config import CrawlConfig
 from .fetcher import fetch_history
 from .storage import last_recorded_date, upsert
+from .throttle import Throttler
 from .tickers import resolve_tickers
 
 log = logging.getLogger(__name__)
 
 
-def _fetch_with_retry(cfg: CrawlConfig, ticker: str, start: date | None) -> pd.DataFrame:
+def _is_rate_limit_error(err: Exception) -> bool:
+    msg = str(err).lower()
+    return "429" in msg or "too many requests" in msg or "rate limit" in msg
+
+
+def _fetch_with_retry(
+    cfg: CrawlConfig,
+    throttler: Throttler,
+    ticker: str,
+    start: date | None,
+) -> pd.DataFrame:
     last_err: Exception | None = None
     for attempt in range(1, cfg.max_retries + 1):
+        throttler.wait()
         try:
             return fetch_history(cfg.market, ticker, start=start)
         except Exception as e:  # noqa: BLE001
             last_err = e
-            backoff = min(2**attempt, 10)
+            if _is_rate_limit_error(e):
+                backoff = min(2**attempt * 5, 120)
+            else:
+                backoff = min(2**attempt, 10)
             log.debug(
                 "Retry %d/%d for %s after error: %s (sleep %ss)",
                 attempt,
@@ -45,6 +60,12 @@ def collect(cfg: CrawlConfig, refresh_tickers: bool = False) -> dict[str, Any]:
         cfg.market_data_dir,
     )
 
+    throttler = Throttler(
+        min_interval=cfg.request_delay,
+        max_per_minute=cfg.max_per_minute,
+        jitter=cfg.jitter,
+    )
+
     succeeded = 0
     failed: list[tuple[str, str]] = []
     new_rows = 0
@@ -60,7 +81,7 @@ def collect(cfg: CrawlConfig, refresh_tickers: bool = False) -> dict[str, Any]:
         start = (last + timedelta(days=1)) if last else None
 
         try:
-            df = _fetch_with_retry(cfg, ticker, start)
+            df = _fetch_with_retry(cfg, throttler, ticker, start)
         except Exception as e:  # noqa: BLE001
             log.warning("Fetch failed for %s: %s", ticker, e)
             failed.append((ticker, str(e)))
@@ -69,7 +90,6 @@ def collect(cfg: CrawlConfig, refresh_tickers: bool = False) -> dict[str, Any]:
         added = upsert(cfg.market_data_dir, ticker, df)
         new_rows += added
         succeeded += 1
-        time.sleep(cfg.request_delay)
 
     summary = {
         "market": cfg.market.value,

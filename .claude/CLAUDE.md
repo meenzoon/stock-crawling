@@ -9,6 +9,7 @@ uv sync
 uv run python main.py --help
 uv run python main.py tickers --market kospi --top 200
 uv run python main.py fetch --market kospi --top 200
+uv run python main.py fetch --market kospi --top 200 --request-delay 0.3 --max-per-minute 30
 uv run python main.py schedule --market kospi --top 200 --at 18:00 --timezone Asia/Seoul
 ```
 
@@ -26,11 +27,12 @@ uv run bandit -r stock_crawler/ -c pyproject.toml
 
 - `main.py`: CLI 엔트리포인트. `stock_crawler.cli.app`을 실행합니다.
 - `stock_crawler/cli.py`: Typer 기반 명령 정의. `fetch`, `tickers`, `schedule` 명령을 제공합니다.
-- `stock_crawler/config.py`: `Market`, `CrawlConfig`, 데이터/티커/로그 경로 상수.
+- `stock_crawler/config.py`: `Market`, `CrawlConfig`, 데이터/티커/로그 경로 상수, throttle 기본값.
 - `stock_crawler/tickers.py`: TOP-N 티커 해석 및 `data/_tickers/{market}_top{N}.csv` 캐시. KOSPI는 Naver Finance 시가총액 페이지, NASDAQ은 nasdaq.com 공개 screener API를 사용합니다.
 - `stock_crawler/fetcher.py`: `yfinance`를 통한 일봉 OHLCV 다운로드. KOSPI 티커는 Yahoo Finance용 `.KS` 접미사를 붙입니다.
+- `stock_crawler/throttle.py`: 호출 간 최소 간격, 분당 최대 호출 수, 지터를 강제하는 `Throttler`. `collector`에서 yfinance 호출 직전마다 `wait()`을 호출합니다.
 - `stock_crawler/storage.py`: 종목별 CSV 경로 계산, 마지막 저장일 조회, 신규 데이터 upsert.
-- `stock_crawler/collector.py`: 티커 해석, 증분 시작일 계산, 재시도, 저장을 묶는 수집 오케스트레이션.
+- `stock_crawler/collector.py`: 티커 해석, 증분 시작일 계산, throttle, 재시도(429에서는 더 긴 backoff), 저장을 묶는 수집 오케스트레이션.
 - `stock_crawler/scheduler.py`: APScheduler 기반 일별/간격 실행. 포그라운드 blocking scheduler입니다.
 - `data/`: 실행 산출물입니다. 티커 캐시와 종목별 CSV가 저장됩니다.
 

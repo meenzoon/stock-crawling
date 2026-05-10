@@ -30,11 +30,25 @@ def fetch(
     refresh_tickers: bool = typer.Option(
         False, "--refresh-tickers", help="Re-resolve the top-N ticker list."
     ),
+    request_delay: float = typer.Option(
+        0.3, "--request-delay", min=0.0, help="Min seconds between yfinance calls."
+    ),
+    max_per_minute: int = typer.Option(
+        30,
+        "--max-per-minute",
+        min=0,
+        help="Max yfinance calls per rolling 60s window (0 disables the cap).",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Crawl historical OHLCV for the top-N tickers (incremental after first run)."""
     _setup_logging(verbose)
-    cfg = CrawlConfig(market=market, top_n=top)
+    cfg = CrawlConfig(
+        market=market,
+        top_n=top,
+        request_delay=request_delay,
+        max_per_minute=max_per_minute,
+    )
     summary = collect(cfg, refresh_tickers=refresh_tickers)
     typer.echo(
         f"\n[{market.value.upper()}] succeeded={summary['succeeded']} "
@@ -73,11 +87,25 @@ def schedule(
     run_now: bool = typer.Option(
         False, "--run-now", help="Execute one collection immediately, then schedule."
     ),
+    request_delay: float = typer.Option(
+        0.3, "--request-delay", min=0.0, help="Min seconds between yfinance calls."
+    ),
+    max_per_minute: int = typer.Option(
+        30,
+        "--max-per-minute",
+        min=0,
+        help="Max yfinance calls per rolling 60s window (0 disables the cap).",
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Run the crawler on a recurring schedule (foreground/blocking process)."""
     _setup_logging(verbose)
-    cfg = CrawlConfig(market=market, top_n=top)
+    cfg = CrawlConfig(
+        market=market,
+        top_n=top,
+        request_delay=request_delay,
+        max_per_minute=max_per_minute,
+    )
 
     if interval_hours is not None:
         schedule_interval(cfg, hours=interval_hours, run_now=run_now)
