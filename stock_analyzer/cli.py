@@ -73,6 +73,9 @@ def scan_cmd(
     lookback_days: int = typer.Option(DEFAULT_LOOKBACK_DAYS, min=10),
     save: bool = typer.Option(True, help="Save signals CSV under data/{market}/_signals/."),
     show_top: int = typer.Option(20, min=0, help="Print top-N rows by |score|."),
+    exclude_etf: bool = typer.Option(
+        False, "--exclude-etf", help="Exclude ETFs from the top-N universe."
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Run the strategy across the market top-N and emit a ranked signal table."""
@@ -87,6 +90,7 @@ def scan_cmd(
         strategy=strategy,
         lookback_days=lookback_days,
         save=save,
+        exclude_etf=exclude_etf,
     )
 
     counts = result_df["signal"].value_counts().to_dict()
