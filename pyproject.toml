@@ -42,7 +42,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["stock_crawler"]
+known-first-party = ["stock_crawler", "stock_analyzer"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -52,5 +52,5 @@ indent-style = "space"
 # Bandit
 # ---------------------------------------------------------------------------
 [tool.bandit]
-targets = ["stock_crawler"]
+targets = ["stock_crawler", "stock_analyzer"]
 skips = []

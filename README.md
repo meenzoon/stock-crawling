@@ -89,6 +89,44 @@ uv run python main.py fetch --help
 uv run python main.py schedule --help
 ```
 
+### 2-5. 단기 매매 신호 분석 (`stock_analyzer`)
+
+수집된 OHLCV CSV를 입력으로 **1일~1주일 horizon**에 맞춰 매수/매도/관망 신호를 생성합니다. 별도 패키지 `stock_analyzer/`로 분리되어 있고, 진입점은 `main_analyze.py`입니다.
+
+지표(단기 최적화 세트):
+
+- RSI(7), EMA(5)/EMA(20) 크로스오버
+- Bollinger Band(10, 2σ) 돌파/회귀
+- ATR(7) (손절가 참고용)
+- 거래량 스파이크(20일 MA 대비 N배), ROC
+
+전략:
+
+- `rsi`: RSI 평균회귀
+- `ema`: EMA 5/20 크로스오버
+- `bollinger`: 볼린저밴드 돌파
+- `volume`: 거래량 돌파 + 당일 종가 방향
+- `composite` (기본): 위 4종 점수 평균
+
+```bash
+# 단일 종목 분석 (콘솔 출력)
+uv run python main_analyze.py analyze 005930 --market kospi --strategy composite
+
+# 시장 전체 스캔 → data/{market}/_signals/{YYYY-MM-DD}.csv 저장 + |score| 상위 N건 출력
+uv run python main_analyze.py scan --market kospi --top 200 --strategy composite --show-top 20
+```
+
+신호 CSV 컬럼:
+
+| 컬럼          | 설명                                          |
+|---------------|-----------------------------------------------|
+| as_of_date    | 신호 산출일 (YYYY-MM-DD)                       |
+| ticker / name | 종목 코드 / 이름                               |
+| signal        | `buy` / `sell` / `hold`                       |
+| score         | -1.0(강한 매도) ~ +1.0(강한 매수)             |
+| reasons       | 각 sub-strategy가 남긴 사람이 읽을 수 있는 근거 |
+| (그 외)       | rsi, ema_fast/slow, bb_*, atr7, stop_loss 등  |
+
 ## 3. 출력 데이터 형식
 
 ```
@@ -97,8 +135,10 @@ data/
 │   ├── kospi_top200.csv
 │   └── nasdaq_top200.csv
 ├── kospi/
-│   ├── 005930.csv      # 삼성전자
-│   ├── 000660.csv      # SK하이닉스
+│   ├── 005930.csv          # 삼성전자
+│   ├── 000660.csv          # SK하이닉스
+│   ├── _signals/
+│   │   └── 2026-05-10.csv  # 분석기 산출물
 │   └── ...
 └── nasdaq/
     ├── AAPL.csv

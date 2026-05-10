@@ -11,6 +11,8 @@ uv run python main.py tickers --market kospi --top 200
 uv run python main.py fetch --market kospi --top 200
 uv run python main.py fetch --market kospi --top 200 --request-delay 0.3 --max-per-minute 30
 uv run python main.py schedule --market kospi --top 200 --at 18:00 --timezone Asia/Seoul
+uv run python main_analyze.py analyze 005930 --market kospi
+uv run python main_analyze.py scan --market kospi --top 200 --strategy composite
 ```
 
 품질 검사:
@@ -18,14 +20,15 @@ uv run python main.py schedule --market kospi --top 200 --at 18:00 --timezone As
 ```bash
 uv run ruff check .
 uv run ruff format --check .
-uv run bandit -r stock_crawler/ -c pyproject.toml
+uv run bandit -r stock_crawler/ stock_analyzer/ -c pyproject.toml
 ```
 
 현재 별도 테스트 프레임워크는 설정되어 있지 않습니다. 기능 변경 시에는 가능한 작은 단위의 테스트를 추가하거나, 최소한 관련 CLI 명령을 `--top` 값을 작게 지정해 수동 검증하세요.
 
 ## 프로젝트 구조
 
-- `main.py`: CLI 엔트리포인트. `stock_crawler.cli.app`을 실행합니다.
+- `main.py`: 수집기 CLI 엔트리포인트. `stock_crawler.cli.app`을 실행합니다.
+- `main_analyze.py`: 분석기 CLI 엔트리포인트. `stock_analyzer.cli.app`을 실행합니다.
 - `stock_crawler/cli.py`: Typer 기반 명령 정의. `fetch`, `tickers`, `schedule` 명령을 제공합니다.
 - `stock_crawler/config.py`: `Market`, `CrawlConfig`, 데이터/티커/로그 경로 상수, throttle 기본값.
 - `stock_crawler/tickers.py`: TOP-N 티커 해석 및 `data/_tickers/{market}_top{N}.csv` 캐시. KOSPI는 Naver Finance 시가총액 페이지, NASDAQ은 nasdaq.com 공개 screener API를 사용합니다.
@@ -34,7 +37,13 @@ uv run bandit -r stock_crawler/ -c pyproject.toml
 - `stock_crawler/storage.py`: 종목별 CSV 경로 계산, 마지막 저장일 조회, 신규 데이터 upsert.
 - `stock_crawler/collector.py`: 티커 해석, 증분 시작일 계산, throttle, 재시도(429에서는 더 긴 backoff), 저장을 묶는 수집 오케스트레이션.
 - `stock_crawler/scheduler.py`: APScheduler 기반 일별/간격 실행. 포그라운드 blocking scheduler입니다.
-- `data/`: 실행 산출물입니다. 티커 캐시와 종목별 CSV가 저장됩니다.
+- `stock_analyzer/`: 1일~1주일 horizon 단기 매매 신호 생성 패키지.
+  - `data.py`: 저장된 CSV 로드(`stock_crawler.storage.csv_path` 재사용).
+  - `indicators.py`: RSI(7), EMA, Bollinger(10, 2σ), ATR(7), ROC, volume spike (pandas로 직접 구현).
+  - `strategies.py`: RSI 평균회귀, EMA 크로스오버, Bollinger 돌파, 거래량 돌파, composite 전략. `StrategyResult(signal, score, reasons, indicators)` 반환.
+  - `scanner.py`: 시장 전체 종목에 전략 실행 → `data/{market}/_signals/{YYYY-MM-DD}.csv` 저장.
+  - `cli.py`: `analyze` (단일 종목), `scan` (전체) 명령.
+- `data/`: 실행 산출물. 티커 캐시, 종목별 OHLCV CSV, 일자별 signal CSV(`{market}/_signals/`).
 
 ## 데이터 규칙
 
@@ -48,6 +57,7 @@ date,open,high,low,close,volume
 - `storage.upsert()`는 날짜를 normalize하고 같은 날짜는 마지막 값을 유지합니다.
 - 증분 수집은 기존 CSV의 마지막 `date` 다음 날부터 시작합니다.
 - 티커 캐시는 `data/_tickers/`에 저장하며, 재산정이 필요할 때만 `--refresh` 또는 `--refresh-tickers`를 사용합니다.
+- 분석 신호는 `data/{market}/_signals/{YYYY-MM-DD}.csv`에 저장합니다. 핵심 컬럼은 `as_of_date,ticker,name,signal,score,reasons` 이며 그 뒤에 전략별 지표 컬럼이 붙습니다. 향후 N일 forward-return 백테스트가 가능하도록 이 스키마는 깨지 않게 유지하세요.
 
 ## 개발 지침
 
@@ -67,9 +77,10 @@ date,open,high,low,close,volume
 ```bash
 uv run ruff check .
 uv run ruff format --check .
-uv run bandit -r stock_crawler/ -c pyproject.toml
+uv run bandit -r stock_crawler/ stock_analyzer/ -c pyproject.toml
 uv run python main.py tickers --market kospi --top 3
 uv run python main.py fetch --market kospi --top 3
+uv run python main_analyze.py scan --market kospi --top 3 --strategy composite
 ```
 
 NASDAQ 관련 변경은 네트워크와 외부 API 상태에 영향을 받습니다. 실패 시 응답 구조 변경인지, 일시적 차단인지, 로컬 코드 문제인지 구분해서 확인하세요.
