@@ -39,6 +39,9 @@ def fetch(
         min=0,
         help="Max yfinance calls per rolling 60s window (0 disables the cap).",
     ),
+    exclude_etf: bool = typer.Option(
+        False, "--exclude-etf", help="Exclude ETFs from the top-N universe."
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Crawl historical OHLCV for the top-N tickers (incremental after first run)."""
@@ -48,6 +51,7 @@ def fetch(
         top_n=top,
         request_delay=request_delay,
         max_per_minute=max_per_minute,
+        exclude_etf=exclude_etf,
     )
     summary = collect(cfg, refresh_tickers=refresh_tickers)
     typer.echo(
@@ -65,10 +69,13 @@ def list_tickers(
     market: Market = typer.Option(Market.kospi),
     top: int = typer.Option(200, min=1, max=2000),
     refresh: bool = typer.Option(False, "--refresh"),
+    exclude_etf: bool = typer.Option(
+        False, "--exclude-etf", help="Exclude ETFs from the top-N universe."
+    ),
 ) -> None:
     """Resolve and print the top-N ticker list (cached on disk)."""
     _setup_logging(False)
-    cfg = CrawlConfig(market=market, top_n=top)
+    cfg = CrawlConfig(market=market, top_n=top, exclude_etf=exclude_etf)
     df = resolve_tickers(cfg, refresh=refresh)
     typer.echo(df.to_string(index=False))
 
@@ -96,6 +103,9 @@ def schedule(
         min=0,
         help="Max yfinance calls per rolling 60s window (0 disables the cap).",
     ),
+    exclude_etf: bool = typer.Option(
+        False, "--exclude-etf", help="Exclude ETFs from the top-N universe."
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Run the crawler on a recurring schedule (foreground/blocking process)."""
@@ -105,6 +115,7 @@ def schedule(
         top_n=top,
         request_delay=request_delay,
         max_per_minute=max_per_minute,
+        exclude_etf=exclude_etf,
     )
 
     if interval_hours is not None:
