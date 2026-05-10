@@ -24,6 +24,7 @@ class CrawlConfig:
     max_retries: int = 3
     max_per_minute: int = 30
     jitter: float = 0.1
+    exclude_etf: bool = False
 
     @property
     def market_data_dir(self) -> Path:
@@ -31,4 +32,5 @@ class CrawlConfig:
 
     @property
     def market_tickers_file(self) -> Path:
-        return self.tickers_dir / f"{self.market.value}_top{self.top_n}.csv"
+        suffix = "_no_etf" if self.exclude_etf else ""
+        return self.tickers_dir / f"{self.market.value}_top{self.top_n}{suffix}.csv"
