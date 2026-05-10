@@ -47,8 +47,9 @@ def scan(
     lookback_days: int = DEFAULT_LOOKBACK_DAYS,
     save: bool = True,
     data_dir: Path = DATA_DIR,
+    exclude_etf: bool = False,
 ) -> pd.DataFrame:
-    cfg = CrawlConfig(market=market, top_n=top_n, data_dir=data_dir)
+    cfg = CrawlConfig(market=market, top_n=top_n, data_dir=data_dir, exclude_etf=exclude_etf)
     universe = resolve_tickers(cfg, refresh=False)
     log.info(
         "Scanning %s top %d with strategy=%s",
