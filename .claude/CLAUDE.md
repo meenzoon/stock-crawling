@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-이 저장소는 KOSPI / NASDAQ 시가총액 TOP-N 종목의 일봉 OHLCV 데이터를 무료 소스에서 수집해 CSV로 저장하는 Python CLI 프로젝트입니다. Python 3.11+와 `uv`를 기준으로 개발합니다.
+이 저장소는 KOSPI / NASDAQ 시가총액 TOP-N 종목의 일봉 OHLCV 데이터를 무료 소스에서 수집해 CSV로 저장하는 Python CLI 프로젝트입니다. Python 3.13+와 `uv`를 기준으로 개발합니다.
 
 ## 핵심 명령
 

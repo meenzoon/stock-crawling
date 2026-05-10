@@ -11,7 +11,7 @@ KOSPI / NASDAQ 시가총액 TOP-N 종목의 **일봉 OHLCV** 데이터를 무료
 
 ## 1. 설치
 
-Python 3.11+ / [uv](https://github.com/astral-sh/uv) 가 필요합니다.
+Python 3.13+ / [uv](https://github.com/astral-sh/uv) 가 필요합니다.
 
 ```bash
 uv sync
