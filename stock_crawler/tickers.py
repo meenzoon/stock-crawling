@@ -1,3 +1,10 @@
+"""KOSPI / NASDAQ 시가총액 TOP-N 티커 목록을 해석하고 디스크에 캐시한다.
+
+KOSPI 는 Naver Finance 시가총액 페이지(HTML)를 스크래핑하고, NASDAQ 은
+nasdaq.com 의 공개 screener API(JSON)를 사용한다. ``exclude_etf`` 옵션이
+켜진 경우 각 시장별 ETF 코드 목록을 별도로 받아 차집합으로 필터링한다.
+"""
+
 import logging
 import re
 import time
@@ -11,7 +18,7 @@ from .config import CrawlConfig, Market
 log = logging.getLogger(__name__)
 
 
-# ---------- KOSPI: Naver Finance market-cap ranking (free, no auth) ----------
+# ---------- KOSPI: Naver Finance 시가총액 랭킹 (무료, 인증 불필요) ----------
 
 NAVER_MARKET_SUM_URL = "https://finance.naver.com/sise/sise_market_sum.naver?sosok=0&page={page}"
 NAVER_HEADERS = {
@@ -21,12 +28,19 @@ NAVER_HEADERS = {
     ),
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
 }
-NAVER_PAGE_SIZE = 50  # rows per market-sum page
+NAVER_PAGE_SIZE = 50  # 시가총액 페이지 한 페이지당 행 수
 NAVER_ETF_LIST_URL = "https://finance.naver.com/api/sise/etfItemList.nhn"
 
 
 def fetch_kospi_etf_codes() -> set[str]:
-    """All KOSPI/KOSDAQ-listed ETF item codes from the Naver ETF JSON endpoint."""
+    """Naver ETF 목록 JSON 엔드포인트에서 KOSPI/KOSDAQ 상장 ETF 코드를 모두 받아온다.
+
+    Returns:
+        6자리 ETF 종목 코드의 집합.
+
+    Raises:
+        RuntimeError: 응답이 비어 있거나 예상한 키 구조가 아닌 경우.
+    """
     resp = requests.get(NAVER_ETF_LIST_URL, headers=NAVER_HEADERS, timeout=15)
     resp.raise_for_status()
     payload = resp.json()
@@ -40,7 +54,19 @@ def fetch_kospi_etf_codes() -> set[str]:
 
 
 def fetch_kospi_top(n: int, exclude_etf: bool = False) -> pd.DataFrame:
-    """KOSPI top-N by market cap, scraped from Naver Finance market-sum pages."""
+    """Naver Finance 시가총액 페이지를 스크래핑해 KOSPI TOP-N 종목을 반환한다.
+
+    Args:
+        n: 가져올 상위 종목 수.
+        exclude_etf: ``True`` 이면 ETF 코드를 차집합으로 제외한다. 이때 ETF 만큼
+            결과가 줄어드는 것을 보전하기 위해 페이지 상한을 두 배로 확장한다.
+
+    Returns:
+        컬럼이 ``ticker, name, market_cap, as_of`` 인 데이터프레임.
+
+    Raises:
+        RuntimeError: 페이지 응답에 데이터 테이블이 없거나 한 행도 추출하지 못한 경우.
+    """
     etf_codes: set[str] = fetch_kospi_etf_codes() if exclude_etf else set()
     rows: list[dict] = []
     base_pages = (n + NAVER_PAGE_SIZE - 1) // NAVER_PAGE_SIZE
@@ -72,7 +98,7 @@ def fetch_kospi_top(n: int, exclude_etf: bool = False) -> pd.DataFrame:
             name = link.get_text(strip=True)
             cap_text = tds[6].get_text(strip=True).replace(",", "")
             try:
-                # Naver shows market cap in units of 억 (1e8 KRW).
+                # Naver 는 시가총액을 억원 단위(1e8 KRW)로 표시함
                 market_cap = int(cap_text) * 100_000_000
             except ValueError:
                 market_cap = 0
@@ -96,7 +122,7 @@ def fetch_kospi_top(n: int, exclude_etf: bool = False) -> pd.DataFrame:
     return df
 
 
-# ---------- NASDAQ: nasdaq.com public screener API ----------
+# ---------- NASDAQ: nasdaq.com 공개 screener API ----------
 
 NASDAQ_SCREENER_URL = "https://api.nasdaq.com/api/screener/stocks"
 NASDAQ_ETF_SCREENER_URL = "https://api.nasdaq.com/api/screener/etf"
@@ -113,6 +139,14 @@ NASDAQ_HEADERS = {
 
 
 def _coerce_money(series: pd.Series) -> pd.Series:
+    """문자열로 표현된 시가총액 컬럼(``"$1,234,000"`` 등)을 부동소수로 변환한다.
+
+    Args:
+        series: 변환 대상 시리즈. 이미 숫자형이면 그대로 ``float`` 캐스팅한다.
+
+    Returns:
+        ``float`` 타입의 시리즈. 빈 문자열/'NA'/'N/A'/'nan' 은 ``0`` 으로 처리된다.
+    """
     if series.dtype.kind in ("i", "f"):
         return series.astype(float)
     return (
@@ -126,7 +160,14 @@ def _coerce_money(series: pd.Series) -> pd.Series:
 
 
 def fetch_nasdaq_etf_symbols() -> set[str]:
-    """All NASDAQ-listed ETF symbols from the nasdaq.com ETF screener."""
+    """nasdaq.com ETF screener 에서 NASDAQ 상장 ETF 심볼을 모두 받아온다.
+
+    Returns:
+        대문자로 정규화된 ETF 심볼의 집합.
+
+    Raises:
+        RuntimeError: 응답에 행이 하나도 없는 경우.
+    """
     params = {"tableonly": "true", "limit": "5000", "download": "true"}
     resp = requests.get(NASDAQ_ETF_SCREENER_URL, params=params, headers=NASDAQ_HEADERS, timeout=20)
     resp.raise_for_status()
@@ -147,7 +188,19 @@ def fetch_nasdaq_etf_symbols() -> set[str]:
 
 
 def fetch_nasdaq_top(n: int, exclude_etf: bool = False) -> pd.DataFrame:
-    """NASDAQ-listed top-N by market cap from the nasdaq.com screener."""
+    """nasdaq.com 공개 screener 로 NASDAQ 상장 TOP-N 종목(시가총액 기준)을 받아온다.
+
+    Args:
+        n: 가져올 상위 종목 수.
+        exclude_etf: ``True`` 이면 ETF 심볼을 차집합으로 제외한다. 안전 마진을
+            위해 over-fetch 배수를 3배에서 4배로 늘리고 ETF 목록을 사전에 받는다.
+
+    Returns:
+        컬럼이 ``ticker, name, market_cap, as_of`` 인 데이터프레임.
+
+    Raises:
+        RuntimeError: 응답이 비어 있거나 예상한 컬럼이 없을 때.
+    """
     etf_symbols: set[str] = fetch_nasdaq_etf_symbols() if exclude_etf else set()
     limit = max(n * 4, 400) if exclude_etf else max(n * 3, 200)
     params = {
@@ -192,10 +245,23 @@ def fetch_nasdaq_top(n: int, exclude_etf: bool = False) -> pd.DataFrame:
     return df[["ticker", "name", "market_cap", "as_of"]]
 
 
-# ---------- Public entry point with on-disk cache ----------
+# ---------- 디스크 캐시를 갖는 공개 진입점 ----------
 
 
 def resolve_tickers(cfg: CrawlConfig, refresh: bool = False) -> pd.DataFrame:
+    """TOP-N 티커 목록을 캐시 파일에서 읽거나 새로 받아온다.
+
+    캐시 파일 경로는 ``cfg.market_tickers_file`` 로 결정되며, ``exclude_etf``
+    플래그에 따라 자동으로 분리된 파일명을 사용한다. ``refresh=True`` 일 때만
+    강제로 다시 받아 캐시를 갱신한다.
+
+    Args:
+        cfg: 시장/TOP-N/ETF 제외 등 수집 설정을 담은 ``CrawlConfig``.
+        refresh: ``True`` 이면 기존 캐시를 무시하고 원격에서 새로 받는다.
+
+    Returns:
+        TOP-N 행을 가진 데이터프레임 (``ticker, name, market_cap, as_of``).
+    """
     cfg.tickers_dir.mkdir(parents=True, exist_ok=True)
     out = cfg.market_tickers_file
     if not refresh and out.exists():
