@@ -71,7 +71,7 @@ class Throttler:
                     wait_for = max(wait_for, self._calls[0] + 60.0 - now)
 
             if wait_for > 0 and self.jitter > 0:
-                wait_for += random.uniform(0, self.jitter * wait_for)  # nosec B311
+                wait_for += random.uniform(0, self.jitter * wait_for)  # noqa: S311
 
             if wait_for > 0:
                 log.debug("Throttler sleeping %.3fs", wait_for)
