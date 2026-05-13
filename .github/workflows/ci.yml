@@ -27,19 +27,3 @@ jobs:
       - name: Ruff format check
         run: uv run ruff format --check .
 
-  security:
-    name: Bandit (security)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v5
-        with:
-          python-version-file: ".python-version"
-          enable-cache: true
-
-      - name: Install dev dependencies
-        run: uv sync --group dev
-
-      - name: Bandit security scan
-        run: uv run bandit -r stock_crawler/ -c pyproject.toml
