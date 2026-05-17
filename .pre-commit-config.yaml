@@ -1,11 +1,16 @@
-# Pre-commit hooks configuration
-# See https://pre-commit.com for more information
 repos:
-  # Ruff - 빠른 Python linter & formatter (Flake8(linter) + isort(자동 정렬) + Black(formatting) 역할 통합)
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.7
+  - repo: local
     hooks:
-      - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
-      - id: ruff-format
+      - id: ruff-lint
+        name: Ruff lint
+        entry: uv run ruff check .
+        language: system
+        pass_filenames: false
+        types_or: [python, pyi]
 
+      - id: ruff-format-check
+        name: Ruff format check
+        entry: uv run ruff format --check .
+        language: system
+        pass_filenames: false
+        types_or: [python, pyi]
