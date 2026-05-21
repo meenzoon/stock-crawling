@@ -1,187 +1,248 @@
 # stock-crawling
 
-KOSPI / NASDAQ 시가총액 TOP-N 종목의 **일봉 OHLCV** 데이터를 무료 소스에서 받아오는
-백테스팅용 데이터 크롤러입니다.
+KOSPI / NASDAQ 시가총액 TOP-N 종목의 **일봉 OHLCV** 데이터를 무료 소스에서 수집하고,
+저장된 CSV를 기반으로 단기 매매 신호를 계산하는 Python CLI 프로젝트입니다.
 
-- **OHLCV 수집**: [`yfinance`](https://github.com/ranaroussi/yfinance) (Yahoo Finance). KOSPI 종목은 `.KS` 접미사를 붙여 호출하며, 상장 이래 전 기간(`period="max"`)을 받는다.
-- **TOP-N 선정**: KOSPI는 Naver Finance 시가총액 페이지 스크래핑, NASDAQ은 nasdaq.com 공개 스크리너 API
-- **ETF 제외**: `--exclude-etf` 옵션으로 TOP-N 산정에서 ETF 종목을 차집합으로 걸러낼 수 있다.
-- **저장**: 종목별 CSV (`data/{market}/{ticker}.csv`), 다음 실행 시 마지막 날짜 이후만 증분 수집
-- **스케줄링**: `apscheduler`로 매일 정해진 시각(cron) 또는 N시간 간격(interval) 실행
+## 주요 기능
 
-## 1. 설치
+- **TOP-N 티커 수집**: KOSPI는 Naver Finance 시가총액 페이지, NASDAQ은 nasdaq.com
+  screener API를 사용합니다.
+- **ETF 제외 옵션**: `--exclude-etf`로 ETF 목록을 별도로 받아 TOP-N 산정에서 제외합니다.
+- **OHLCV 수집**: yfinance `Ticker.history()`를 사용합니다. KOSPI 종목은 Yahoo Finance
+  규칙에 맞춰 `.KS` 접미사를 붙여 호출합니다.
+- **증분 저장**: 종목별 CSV의 마지막 거래일 다음 날부터만 추가 수집합니다.
+- **호출 제한**: 요청 간 최소 간격과 분당 호출 수 제한으로 429 가능성을 줄입니다.
+- **스케줄링**: apscheduler로 매일 지정 시각 또는 N시간 간격 수집을 실행합니다.
+- **신호 분석**: RSI, EMA, Bollinger Band, ATR, 거래량 스파이크, ROC 기반 단기 신호를
+  생성합니다.
 
-Python 3.13+ / [uv](https://github.com/astral-sh/uv) 가 필요합니다.
+## 설치
+
+Python 3.13+와 [uv](https://github.com/astral-sh/uv)가 필요합니다.
 
 ```bash
 uv sync
 ```
 
-## 2. 사용법
+패키지 관리는 uv만 사용합니다.
 
-### 2-1. TOP-N 티커 확인
+## 빠른 시작
 
 ```bash
-uv run python main.py tickers --market kospi  --top 200
+# KOSPI TOP 200 티커 확인 및 캐시
+uv run python main.py tickers --market kospi --top 200
+
+# KOSPI TOP 200 일봉 수집
+uv run python main.py fetch --market kospi --top 200
+
+# 수집된 CSV로 단일 종목 신호 분석
+uv run python main_analyze.py analyze 005930 --market kospi --strategy composite
+
+# 시장 전체 스캔
+uv run python main_analyze.py scan --market kospi --top 200 --show-top 20
+```
+
+## 티커 수집
+
+```bash
+uv run python main.py tickers --market kospi --top 200
 uv run python main.py tickers --market nasdaq --top 200
 ```
 
-티커 목록은 `data/_tickers/{market}_top{N}.csv`에 캐시됩니다. 다시 산출하려면
-`--refresh` 옵션을 붙이세요.
-
-### 2-2. 과거 일봉 수집 (1회 실행)
+티커 목록은 `data/_tickers/{market}_top{N}.csv`에 캐시됩니다. ETF 제외 옵션을 사용하면
+`data/_tickers/{market}_top{N}_no_etf.csv`로 별도 캐시됩니다.
 
 ```bash
-# KOSPI 시총 200 종목, yfinance(.KS 접미사)로 전체 일봉 수집
+# 캐시 무시 후 다시 수집
+uv run python main.py tickers --market kospi --top 200 --refresh
+
+# ETF 제외
+uv run python main.py tickers --market kospi --top 200 --exclude-etf
+uv run python main.py tickers --market nasdaq --top 200 --exclude-etf
+```
+
+## OHLCV 수집
+
+```bash
+# KOSPI 시총 상위 200개
 uv run python main.py fetch --market kospi --top 200
 
-# NASDAQ 시총 200 종목, yfinance로 상장 이래 전 기간 수집
+# NASDAQ 시총 상위 200개
 uv run python main.py fetch --market nasdaq --top 200
 ```
 
-- 첫 실행: 종목당 전체 히스토리(`period="max"`)를 받아옵니다.
-- 두 번째 실행 이후: CSV 마지막 날짜 다음 날부터만 받아 **증분 업데이트**합니다.
-- 이미 수집한 종목 목록을 다시 산정하고 싶으면 `--refresh-tickers`를 붙이세요.
-- TOP-N 산정에서 ETF 를 제외하려면 `--exclude-etf`를 붙이세요.
+수집 동작:
 
-#### Throttling
-
-yfinance / Yahoo는 짧은 시간에 호출이 몰리면 429를 던지므로, 수집기는 **호출 간 최소 간격**과 **분당 최대 호출 수**를 함께 강제합니다. 기본값은 보수적입니다.
+- 첫 실행은 종목별 전체 이력(`period="max"`)을 받습니다.
+- 이후 실행은 저장된 CSV의 마지막 거래일 다음 날부터 증분 업데이트합니다.
+- 티커 목록을 다시 계산하려면 `--refresh-tickers`를 사용합니다.
+- ETF를 제외한 universe를 사용하려면 `--exclude-etf`를 사용합니다.
 
 ```bash
-uv run python main.py fetch --market kospi --top 200 \
+uv run python main.py fetch --market kospi --top 200 --refresh-tickers
+uv run python main.py fetch --market nasdaq --top 200 --exclude-etf
+```
+
+### 호출 제한
+
+yfinance / Yahoo Finance는 짧은 시간에 호출이 몰리면 429 또는 rate limit 오류를 낼 수
+있습니다. 수집기는 요청 간 최소 대기 시간과 60초 슬라이딩 윈도우 상한을 함께 적용합니다.
+
+```bash
+uv run python main.py fetch --market nasdaq --top 200 \
     --request-delay 0.3 \
     --max-per-minute 30
 ```
 
-- `--request-delay`: 직전 호출 종료 후 다음 호출까지의 최소 대기 시간(초). 기본 0.3.
-- `--max-per-minute`: 직전 60초 동안 허용되는 최대 호출 수. 기본 30. `0`이면 윈도우 캡 비활성.
-- 재시도 시에도 동일하게 throttle이 적용되며, 응답에 `429` / `Too Many Requests`가 포함되면 백오프가 더 길게 적용됩니다.
+- `--request-delay`: yfinance 호출 사이 최소 대기 시간(초). 기본값은 `0.3`입니다.
+- `--max-per-minute`: 최근 60초 동안 허용할 최대 호출 수. 기본값은 `30`이며, `0`이면
+  분당 상한을 끕니다.
+- 재시도 전에도 같은 throttle이 적용됩니다.
+- `429`, `Too Many Requests`, `rate limit` 계열 오류는 더 긴 백오프로 재시도합니다.
 
-### 2-3. 정기 수집 스케줄링
+## 스케줄링
 
-매일 18:00에 KOSPI 시총 200 일봉을 수집:
+스케줄러는 포그라운드에서 블로킹 실행됩니다. 장기 실행이 필요하면 `tmux`, `launchd`,
+`systemd`, OS cron 같은 실행 환경과 함께 사용하세요.
 
 ```bash
+# 매일 18:00 Asia/Seoul에 KOSPI 수집
 uv run python main.py schedule --market kospi --top 200 --at 18:00 --timezone Asia/Seoul
-```
 
-미국장 마감 후(한국시간 다음날 아침 6시쯤) NASDAQ 수집:
-
-```bash
+# 매일 07:00 Asia/Seoul에 NASDAQ 수집
 uv run python main.py schedule --market nasdaq --top 200 --at 07:00 --timezone Asia/Seoul
+
+# 24시간 간격으로 실행
+uv run python main.py schedule --market kospi --top 200 --interval-hours 24
+
+# 시작 전에 즉시 한 번 실행
+uv run python main.py schedule --market kospi --top 200 --at 18:00 --run-now
 ```
 
-N시간 간격으로 실행하고 싶다면:
+## 단기 매매 신호 분석
+
+분석기는 `data/{market}/{ticker}.csv`에 저장된 OHLCV를 읽어 1일~1주일 정도의 단기
+horizon에 맞춘 신호를 계산합니다. 결과는 투자 조언이 아니라 기술 지표 기반 계산 결과입니다.
+
+사용 가능한 전략:
+
+| 전략 | 설명 |
+|---|---|
+| `rsi` | RSI(7) 평균회귀 |
+| `ema` | EMA(5) / EMA(20) 크로스오버 |
+| `bollinger` | Bollinger Band(10, 2σ) 상하단 돌파/회귀 |
+| `volume` | 거래량 스파이크와 1일 ROC 결합 |
+| `composite` | 위 4개 전략 평균. 기본값 |
 
 ```bash
-uv run python main.py schedule --market kospi --interval-hours 24
-```
-
-스케줄러는 **포그라운드 블로킹 프로세스**입니다. 실서비스로는 `nohup`, `tmux`,
-`launchd`(macOS), `systemd`, 또는 OS 크론에 `fetch` 명령을 등록해 쓰는 것도 좋습니다.
-즉시 한 번 실행한 뒤 스케줄링을 시작하려면 `--run-now`를 추가하세요.
-
-### 2-4. 옵션 전체 보기
-
-```bash
-uv run python main.py --help
-uv run python main.py fetch --help
-uv run python main.py schedule --help
-```
-
-### 2-5. 단기 매매 신호 분석 (`stock_analyzer`)
-
-수집된 OHLCV CSV를 입력으로 **1일~1주일 horizon**에 맞춰 매수/매도/관망 신호를 생성합니다. 별도 패키지 `stock_analyzer/`로 분리되어 있고, 진입점은 `main_analyze.py`입니다.
-
-지표(단기 최적화 세트):
-
-- RSI(7), EMA(5)/EMA(20) 크로스오버
-- Bollinger Band(10, 2σ) 돌파/회귀
-- ATR(7) (손절가 참고용)
-- 거래량 스파이크(20일 MA 대비 N배), ROC
-
-전략:
-
-- `rsi`: RSI 평균회귀
-- `ema`: EMA 5/20 크로스오버
-- `bollinger`: 볼린저밴드 돌파
-- `volume`: 거래량 돌파 + 당일 종가 방향
-- `composite` (기본): 위 4종 점수 평균
-
-```bash
-# 단일 종목 분석 (콘솔 출력)
+# 단일 종목 분석
 uv run python main_analyze.py analyze 005930 --market kospi --strategy composite
+uv run python main_analyze.py analyze AAPL --market nasdaq --strategy ema
 
-# 시장 전체 스캔 → data/{market}/_signals/{YYYY-MM-DD}.csv 저장 + |score| 상위 N건 출력
+# 최근 120개 거래일만 사용
+uv run python main_analyze.py analyze 005930 --market kospi --lookback-days 120
+
+# 시장 전체 스캔 후 data/{market}/_signals/{YYYY-MM-DD}.csv 저장
 uv run python main_analyze.py scan --market kospi --top 200 --strategy composite --show-top 20
+
+# 저장 없이 콘솔 출력만
+uv run python main_analyze.py scan --market nasdaq --top 100 --no-save --show-top 20
 ```
 
-신호 CSV 컬럼:
+신호 점수는 `-1.0`에서 `+1.0` 범위입니다.
 
-| 컬럼          | 설명                                          |
-|---------------|-----------------------------------------------|
-| as_of_date    | 신호 산출일 (YYYY-MM-DD)                       |
-| ticker / name | 종목 코드 / 이름                               |
-| signal        | `buy` / `sell` / `hold`                       |
-| score         | -1.0(강한 매도) ~ +1.0(강한 매수)             |
-| reasons       | 각 sub-strategy가 남긴 사람이 읽을 수 있는 근거 |
-| (그 외)       | rsi, ema_fast/slow, bb_*, atr7, stop_loss 등  |
+- `buy`: 점수가 양의 임계값 이상
+- `sell`: 점수가 음의 임계값 이하
+- `hold`: 신호가 약하거나 데이터가 부족한 경우
 
-## 3. 출력 데이터 형식
+## 데이터 레이아웃
 
-```
+```text
 data/
 ├── _tickers/
 │   ├── kospi_top200.csv
-│   └── nasdaq_top200.csv
+│   ├── kospi_top200_no_etf.csv
+│   ├── nasdaq_top200.csv
+│   └── nasdaq_top200_no_etf.csv
 ├── kospi/
-│   ├── 005930.csv          # 삼성전자
-│   ├── 000660.csv          # SK하이닉스
-│   ├── _signals/
-│   │   └── 2026-05-10.csv  # 분석기 산출물
-│   └── ...
+│   ├── 005930.csv
+│   ├── 000660.csv
+│   └── _signals/
+│       └── 2026-05-10.csv
 └── nasdaq/
     ├── AAPL.csv
     ├── MSFT.csv
-    └── ...
+    └── _signals/
+        └── 2026-05-10.csv
 ```
 
-각 종목 CSV 컬럼:
+종목 CSV 컬럼:
 
-| 컬럼   | 설명                                      |
-|--------|-------------------------------------------|
-| date   | 거래일 (YYYY-MM-DD)                       |
-| open   | 시가                                      |
-| high   | 고가                                      |
-| low    | 저가                                      |
-| close  | 종가 (비조정가)                           |
-| volume | 거래량                                    |
+| 컬럼 | 설명 |
+|---|---|
+| `date` | 거래일 (`YYYY-MM-DD`) |
+| `open` | 시가 |
+| `high` | 고가 |
+| `low` | 저가 |
+| `close` | 종가. yfinance 비조정가 |
+| `volume` | 거래량 |
 
-> KOSPI·NASDAQ 모두 비조정가(`auto_adjust=False`)로 받습니다. 백테스팅에서 배당/액분
-> 보정이 필요하면 별도 조정 단계(`yfinance`의 `Adj Close` 또는 외부 라이브러리)를 추가하세요.
+신호 CSV 주요 컬럼:
 
-## 4. 참고 / 한계
+| 컬럼 | 설명 |
+|---|---|
+| `as_of_date` | 신호 산출일 (`YYYY-MM-DD`) |
+| `ticker` | 종목 코드 |
+| `name` | 종목명 |
+| `signal` | `buy`, `sell`, `hold` |
+| `score` | `-1.0`부터 `+1.0` 사이 점수 |
+| `reasons` | 전략별 판단 근거 |
+| 그 외 | `rsi`, `ema_fast`, `ema_slow`, `bb_*`, `atr7`, `roc5`, `stop_loss` 등 |
 
-- 모든 데이터 소스는 **무료**이며, 로그인이나 API 키가 필요 없습니다.
-- 야후 파이낸스, Naver Finance, NASDAQ 스크리너는 모두 비공식 페이지/API 이므로
-  일시적 차단이나 응답 형식 변경이 있을 수 있습니다. 실패한 종목은 콘솔에 출력되며
-  다음 실행 시 자동 재시도됩니다.
-- 한국 종목 코드는 6자리 숫자(예: `005930`), 미국은 알파벳 심볼(예: `AAPL`)
-  형태로 저장됩니다.
-- KOSPI 일봉은 Yahoo Finance 의 `.KS` 심볼 데이터를 비조정가로 사용합니다. 야후의
-  한국 종목 이력은 거래소 공식 데이터와 일부 차이가 있을 수 있습니다.
+저장 규칙:
 
-## 5. 개발 / 테스트
+- CSV는 index 없이 저장됩니다.
+- 종목 CSV는 `date` 기준 오름차순으로 정렬됩니다.
+- 같은 날짜가 중복되면 새로 받은 값이 우선합니다.
+- KOSPI와 NASDAQ 모두 yfinance `auto_adjust=False`를 사용하므로 배당/액분 보정이 필요하면
+  별도 조정 단계가 필요합니다.
 
-핵심 순수 로직(지표·전략·throttle·CSV 저장·설정·데이터 로딩)에 대한 단위 테스트가
-`tests/` 디렉터리에 있습니다.
+## 개발 / 테스트
+
+핵심 순수 로직에 대한 단위 테스트가 `tests/`에 있습니다.
 
 ```bash
-# 테스트 실행
+# 전체 테스트
 uv run pytest
 
-# 린트 / 포매팅 검사
+# 린트 / 포맷 검사
 uv run ruff check .
 uv run ruff format --check .
 ```
+
+변경 범위별 빠른 확인:
+
+```bash
+uv run pytest tests/test_storage.py tests/test_data.py
+uv run pytest tests/test_throttle.py
+uv run pytest tests/test_indicators.py tests/test_strategies.py
+uv run pytest tests/test_config.py
+```
+
+외부 데이터 연동까지 확인해야 할 때는 소량으로 실행하세요.
+
+```bash
+uv run python main.py fetch --market kospi --top 5
+uv run python main.py fetch --market nasdaq --top 5
+uv run python main_analyze.py scan --market kospi --top 5 --show-top 5
+```
+
+## 참고 / 한계
+
+- 모든 데이터 소스는 무료이며 로그인이나 API 키가 필요 없습니다.
+- Yahoo Finance, Naver Finance, nasdaq.com screener는 공식 보장 API가 아니므로 일시 차단,
+  응답 구조 변경, 데이터 누락이 발생할 수 있습니다.
+- 실패한 종목은 수집 결과 요약에 기록되며, 다음 실행에서 다시 시도할 수 있습니다.
+- 한국 종목 코드는 6자리 숫자(예: `005930`), NASDAQ 종목은 알파벳 심볼(예: `AAPL`)로
+  저장됩니다.
+- `stock_analyzer`의 신호는 기술 지표 계산 결과이며, 매매 성과를 보장하지 않습니다.
