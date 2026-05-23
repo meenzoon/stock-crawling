@@ -246,8 +246,6 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,venv,windows,python
 
-out
-
 # GitHub Spec Kit
 .github/
 .gemini/
@@ -257,8 +255,6 @@ out
 .vscode/
 !.vscode/extensions.json
 !.vscode/settings.json
-
-nodelink
 
 data/
 
