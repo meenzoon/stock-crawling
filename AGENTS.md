@@ -14,8 +14,8 @@ KOSPI / NASDAQ 시가총액 TOP-N 종목의 **일봉 OHLCV** 데이터를 무료
 |---|---|
 | `stock_crawler/` | 티커 수집, 일봉 OHLCV 다운로드, 증분 저장, 스케줄링 |
 | `stock_analyzer/` | 저장된 OHLCV CSV 로드, 기술 지표 계산, 매수/매도/관망 신호 생성 |
-| `main.py` | `stock_crawler` Typer CLI 진입점 |
-| `main_analyze.py` | `stock_analyzer` Typer CLI 진입점 |
+| `stock_crawler/__main__.py` | `python -m stock_crawler` 진입점 (`stock_crawler.cli:app`) |
+| `stock_analyzer/__main__.py` | `python -m stock_analyzer` 진입점 (`stock_analyzer.cli:app`) |
 | `tests/` | 순수 로직 중심 단위 테스트 |
 
 ---
@@ -128,31 +128,31 @@ as_of_date,ticker,name,signal,score,reasons,...
 
 ```bash
 # TOP-N 티커 확인 및 캐시
-uv run python main.py tickers --market kospi --top 200
-uv run python main.py tickers --market nasdaq --top 200
+uv run python -m stock_crawler tickers --market kospi --top 200
+uv run python -m stock_crawler tickers --market nasdaq --top 200
 
 # ETF 제외 TOP-N
-uv run python main.py tickers --market kospi --top 200 --exclude-etf
+uv run python -m stock_crawler tickers --market kospi --top 200 --exclude-etf
 
 # 일봉 1회 수집
-uv run python main.py fetch --market kospi --top 200
-uv run python main.py fetch --market nasdaq --top 200
+uv run python -m stock_crawler fetch --market kospi --top 200
+uv run python -m stock_crawler fetch --market nasdaq --top 200
 
 # 티커 캐시를 새로 받고 수집
-uv run python main.py fetch --market kospi --top 200 --refresh-tickers
+uv run python -m stock_crawler fetch --market kospi --top 200 --refresh-tickers
 
 # 호출 제한 조정
-uv run python main.py fetch --market nasdaq --top 200 --request-delay 0.3 --max-per-minute 30
+uv run python -m stock_crawler fetch --market nasdaq --top 200 --request-delay 0.3 --max-per-minute 30
 
 # 정기 스케줄. 포그라운드 블로킹 프로세스
-uv run python main.py schedule --market kospi --top 200 --at 18:00 --timezone Asia/Seoul
-uv run python main.py schedule --market nasdaq --top 200 --at 07:00 --timezone Asia/Seoul
+uv run python -m stock_crawler schedule --market kospi --top 200 --at 18:00 --timezone Asia/Seoul
+uv run python -m stock_crawler schedule --market nasdaq --top 200 --at 07:00 --timezone Asia/Seoul
 
 # 단일 종목 신호 분석
-uv run python main_analyze.py analyze 005930 --market kospi --strategy composite
+uv run python -m stock_analyzer analyze 005930 --market kospi --strategy composite
 
 # 시장 전체 스캔
-uv run python main_analyze.py scan --market kospi --top 200 --strategy composite --show-top 20
+uv run python -m stock_analyzer scan --market kospi --top 200 --strategy composite --show-top 20
 ```
 
 네트워크를 사용하는 명령(`tickers`, `fetch`, `scan` 중 티커 캐시가 없을 때)은 실행 시간이 길거나
@@ -229,9 +229,9 @@ uv run pytest tests/test_config.py
 외부 연동까지 확인해야 할 때만 소량으로 실행:
 
 ```bash
-uv run python main.py fetch --market kospi --top 5
-uv run python main.py fetch --market nasdaq --top 5
-uv run python main_analyze.py scan --market kospi --top 5 --show-top 5
+uv run python -m stock_crawler fetch --market kospi --top 5
+uv run python -m stock_crawler fetch --market nasdaq --top 5
+uv run python -m stock_analyzer scan --market kospi --top 5 --show-top 5
 ```
 
 네트워크 제한이나 외부 서비스 장애로 실행하지 못한 검증은 최종 응답에 명확히 남기세요.

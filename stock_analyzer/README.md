@@ -3,7 +3,8 @@
 `stock_crawler` 가 저장한 종목별 OHLCV CSV 위에서 **단기(1일~1주일) 매매 신호**를 계산하는
 패키지입니다. 단일 종목 분석(`analyze`)과 시장 전체 스캔(`scan`) 두 가지 모드를 제공합니다.
 
-CLI 진입점은 저장소 루트의 `main_analyze.py` → `stock_analyzer.cli:app` 입니다.
+CLI 진입점은 `stock_analyzer/__main__.py` → `stock_analyzer.cli:app` 입니다.
+호출은 `python -m stock_analyzer` 로 합니다.
 
 신호는 계산 결과일 뿐 **투자 조언이 아닙니다.** 결과 텍스트나 사유 문구에 확정적 수익을
 암시하는 표현을 넣지 마세요.
@@ -79,20 +80,20 @@ as_of_date, ticker, name, signal, score, reasons, <전략별 지표 컬럼들>
 
 ```bash
 # 단일 종목 분석
-uv run python main_analyze.py analyze 005930 --market kospi --strategy composite
-uv run python main_analyze.py analyze AAPL --market nasdaq --strategy rsi --lookback-days 90
+uv run python -m stock_analyzer analyze 005930 --market kospi --strategy composite
+uv run python -m stock_analyzer analyze AAPL --market nasdaq --strategy rsi --lookback-days 90
 
 # 시장 전체 스캔 (디스크에 신호 CSV 저장 + 상위 20개 출력)
-uv run python main_analyze.py scan --market kospi --top 200 --strategy composite --show-top 20
-uv run python main_analyze.py scan --market nasdaq --top 200 --strategy ema --exclude-etf
+uv run python -m stock_analyzer scan --market kospi --top 200 --strategy composite --show-top 20
+uv run python -m stock_analyzer scan --market nasdaq --top 200 --strategy ema --exclude-etf
 
 # 신호 CSV 저장 없이 결과만 보고 싶을 때
-uv run python main_analyze.py scan --market kospi --top 50 --save false
+uv run python -m stock_analyzer scan --market kospi --top 50 --save false
 ```
 
 `scan` 은 `stock_crawler.tickers.resolve_tickers` 를 캐시 모드(`refresh=False`)로 호출
 하므로 **티커 캐시가 미리 만들어져 있어야** 합니다. 없으면 한 번
-`uv run python main.py tickers --market <market>` 로 만들어 두세요.
+`uv run python -m stock_crawler tickers --market <market>` 로 만들어 두세요.
 
 ---
 
