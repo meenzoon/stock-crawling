@@ -1,5 +1,7 @@
 """stock_analyzer.indicators 의 기술적 지표 함수 단위 테스트."""
 
+import warnings
+
 import pandas as pd
 import pytest
 
@@ -56,6 +58,14 @@ def test_rsi_stays_within_bounds():
 def test_rsi_length_preserved():
     close = s(range(1, 30))
     assert len(rsi(close, period=7)) == len(close)
+
+
+def test_rsi_does_not_emit_futurewarning():
+    close = s(range(1, 30))
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        rsi(close, period=7)
+    assert not [w for w in caught if issubclass(w.category, FutureWarning)]
 
 
 # ---------- bollinger ----------
