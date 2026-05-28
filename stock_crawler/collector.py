@@ -124,17 +124,17 @@ def collect(cfg: CrawlConfig, refresh_tickers: bool = False) -> dict[str, Any]:
     )
     for row in iterator:
         ticker = str(row.ticker).strip()
-        last = last_recorded_date(cfg.market_data_dir, ticker)
-        start = (last + timedelta(days=1)) if last else None
 
         try:
+            last = last_recorded_date(cfg.market_data_dir, ticker)
+            start = (last + timedelta(days=1)) if last else None
             df = _fetch_with_retry(cfg, throttler, ticker, start)
+            added = upsert(cfg.market_data_dir, ticker, df)
         except Exception as e:  # noqa: BLE001
-            log.warning("Fetch failed for %s: %s", ticker, e)
+            log.warning("Collection failed for %s: %s", ticker, e)
             failed.append((ticker, str(e)))
             continue
 
-        added = upsert(cfg.market_data_dir, ticker, df)
         new_rows += added
         succeeded += 1
 
