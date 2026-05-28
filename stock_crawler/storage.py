@@ -65,6 +65,10 @@ def upsert(market_dir: Path, ticker: str, new_df: pd.DataFrame) -> int:
 
     Returns:
         디스크에 새로 추가된 거래일 행 수. 빈 입력이면 ``0``.
+
+    Raises:
+        ValueError: ``new_df`` 에 ``date`` 컬럼이나 ``DatetimeIndex`` 가 없어
+            거래일을 식별할 수 없을 때.
     """
     if new_df is None or new_df.empty:
         return 0
@@ -72,11 +76,17 @@ def upsert(market_dir: Path, ticker: str, new_df: pd.DataFrame) -> int:
     p = csv_path(market_dir, ticker)
 
     incoming = new_df.copy()
-    if incoming.index.name == "date" or isinstance(incoming.index, pd.DatetimeIndex):
+    if isinstance(incoming.index, pd.DatetimeIndex):
+        if incoming.index.name is None:
+            incoming.index = incoming.index.rename("date")
         incoming = incoming.reset_index()
+    elif incoming.index.name == "date":
+        incoming = incoming.reset_index()
+
     if "date" not in incoming.columns:
-        first = incoming.columns[0]
-        incoming = incoming.rename(columns={first: "date"})
+        raise ValueError(
+            f"Cannot upsert {ticker}: 'date' column not found (columns: {list(incoming.columns)})"
+        )
     incoming["date"] = pd.to_datetime(incoming["date"]).dt.normalize()
 
     if p.exists():
