@@ -45,6 +45,10 @@ def fetch_yfinance(symbol: str, start: date | None = None) -> pd.DataFrame:
     Returns:
         ``date`` 인덱스(naive), 컬럼은 소문자 ``open/high/low/close/volume``.
         데이터가 없으면 동일 컬럼의 빈 데이터프레임을 반환한다.
+
+    Raises:
+        ValueError: 응답에 OHLCV 필수 컬럼이 빠져 있을 때. 외부 스키마 변경이나
+            부분 응답으로 불완전한 CSV 가 저장되는 것을 막기 위함.
     """
     t = yf.Ticker(symbol)
     if start is None:
@@ -60,7 +64,14 @@ def fetch_yfinance(symbol: str, start: date | None = None) -> pd.DataFrame:
     df.index = idx
     df.index.name = "date"
     df = df.rename(columns=str.lower)
-    return df[[c for c in OHLCV_COLUMNS if c in df.columns]]
+
+    missing = [c for c in OHLCV_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(
+            f"Incomplete OHLCV response for {symbol}: missing {missing} "
+            f"(got columns {list(df.columns)})"
+        )
+    return df[OHLCV_COLUMNS]
 
 
 def fetch_history(market: Market, ticker: str, start: date | None) -> pd.DataFrame:
