@@ -23,8 +23,9 @@ def ema(close: pd.Series, period: int) -> pd.Series:
 def rsi(close: pd.Series, period: int = 7) -> pd.Series:
     """Wilder 공식의 RSI(상대강도지수).
 
-    상승/하락분의 EMA 비율을 사용하며, 손실 EMA 가 0 인 구간(=무손실 구간)은 100 으로
-    클램프한다.
+    상승/하락분의 EMA 비율을 사용한다. 손실 EMA 가 0 인 구간은 무손실 상승 구간이
+    므로 100 으로 클램프하되, 상승/하락분이 모두 0 인 완전 횡보 구간은 50(중립)으로
+    처리해 거짓 과매수 신호가 나오지 않게 한다.
 
     Args:
         close: 종가 시리즈.
@@ -40,7 +41,9 @@ def rsi(close: pd.Series, period: int = 7) -> pd.Series:
     avg_loss = loss.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
     rs = avg_gain / avg_loss.mask(avg_loss == 0.0)
     out = 100.0 - (100.0 / (1.0 + rs))
-    return out.fillna(100.0).where(avg_loss != 0, 100.0)
+    out = out.fillna(100.0).where(avg_loss != 0.0, 100.0)
+    flat = (avg_gain == 0.0) & (avg_loss == 0.0)
+    return out.mask(flat, 50.0)
 
 
 def bollinger(

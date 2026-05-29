@@ -96,6 +96,17 @@ def test_rsi_strategy_neutral_holds(make_ohlcv):
     assert r.signal == "hold"
 
 
+def test_rsi_strategy_flat_series_holds(make_ohlcv):
+    r = rsi_mean_reversion(make_ohlcv([100] * 30))
+    assert r.signal == "hold"
+    assert r.indicators["rsi"] == pytest.approx(50.0)
+
+
+def test_composite_flat_series_does_not_signal_sell(make_ohlcv):
+    r = composite(make_ohlcv([100] * 30))
+    assert r.signal != "sell"
+
+
 # ---------- ema_crossover ----------
 
 

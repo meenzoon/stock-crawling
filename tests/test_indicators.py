@@ -48,6 +48,12 @@ def test_rsi_downtrend_post_warmup_is_0():
     assert out.iloc[period:].eq(0.0).all()
 
 
+def test_rsi_flat_series_is_neutral_50():
+    period = 7
+    out = rsi(s([100] * 30), period=period)
+    assert out.iloc[period:].eq(50.0).all()
+
+
 def test_rsi_stays_within_bounds():
     close = s([100, 101, 100, 102, 101, 103, 99, 104, 98, 105] * 4)
     out = rsi(close, period=7).dropna()
