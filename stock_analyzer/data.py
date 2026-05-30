@@ -50,7 +50,11 @@ def load_ohlcv(
         log.warning("OHLCV file missing for %s/%s: %s", market.value, ticker, p)
         return pd.DataFrame()
 
-    df = pd.read_csv(p, parse_dates=["date"])
+    try:
+        df = pd.read_csv(p, parse_dates=["date"])
+    except Exception as e:  # noqa: BLE001
+        log.warning("Could not read %s, treating as empty: %s", p, e)
+        return pd.DataFrame()
     if df.empty:
         return df
 

@@ -22,6 +22,14 @@ def test_load_ohlcv_missing_file_returns_empty(tmp_path):
     assert df.empty
 
 
+def test_load_ohlcv_corrupt_csv_returns_empty(tmp_path):
+    # date 컬럼이 없는 손상 CSV 는 예외 없이 빈 프레임으로 처리되어야 한다
+    raw = pd.DataFrame({"open": [1, 2], "close": [1, 2]})
+    _write_ohlcv(tmp_path, Market.kospi, "AAA", raw)
+    df = load_ohlcv(Market.kospi, "AAA", data_dir=tmp_path)
+    assert df.empty
+
+
 def test_load_ohlcv_reads_and_sorts_by_date(tmp_path):
     raw = pd.DataFrame({"date": ["2024-01-03", "2024-01-01", "2024-01-02"], "close": [3, 1, 2]})
     _write_ohlcv(tmp_path, Market.kospi, "AAA", raw)
