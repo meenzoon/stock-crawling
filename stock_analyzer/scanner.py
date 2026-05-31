@@ -113,9 +113,10 @@ def scan(
         rows.append(_result_to_row(ticker, name, today, res))
 
     result_df = pd.DataFrame(rows)
-    result_df = result_df.sort_values("score", key=lambda s: s.abs(), ascending=False).reset_index(
-        drop=True
-    )
+    if not result_df.empty:
+        result_df = result_df.sort_values(
+            "score", key=lambda s: s.abs(), ascending=False
+        ).reset_index(drop=True)
 
     if save:
         out_dir = _signals_dir(market, data_dir)

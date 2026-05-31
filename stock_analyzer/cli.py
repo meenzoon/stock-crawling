@@ -107,7 +107,7 @@ def scan_cmd(
         exclude_etf=exclude_etf,
     )
 
-    counts = result_df["signal"].value_counts().to_dict()
+    counts = result_df["signal"].value_counts().to_dict() if not result_df.empty else {}
     typer.echo(
         f"\n[{market.value.upper()}] strategy={strategy} "
         f"buy={counts.get('buy', 0)} sell={counts.get('sell', 0)} hold={counts.get('hold', 0)}"
