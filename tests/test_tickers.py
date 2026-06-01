@@ -56,6 +56,27 @@ def test_corrupt_cache_missing_ticker_column_refetches(tmp_path, monkeypatch):
     assert "ticker" in pd.read_csv(cfg.market_tickers_file).columns
 
 
+def test_empty_cache_file_refetches(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    cfg.market_tickers_file.write_text("")  # 0바이트 → EmptyDataError
+    calls = _patch_fetch(monkeypatch, _valid_df(["X", "Y", "Z"]))
+
+    out = tickers.resolve_tickers(cfg)
+    assert calls["n"] == 1
+    assert list(out["ticker"]) == ["X", "Y", "Z"]
+
+
+def test_unparseable_cache_refetches(tmp_path, monkeypatch):
+    cfg = _cfg(tmp_path)
+    # 따옴표가 닫히지 않은 파싱 불가 CSV → ParserError
+    cfg.market_tickers_file.write_text('ticker,name\n"AAA,Inc\n')
+    calls = _patch_fetch(monkeypatch, _valid_df(["X", "Y", "Z"]))
+
+    out = tickers.resolve_tickers(cfg)
+    assert calls["n"] == 1
+    assert list(out["ticker"]) == ["X", "Y", "Z"]
+
+
 def test_short_cache_refetches(tmp_path, monkeypatch):
     cfg = _cfg(tmp_path, top_n=3)
     cfg.market_tickers_file.write_text(_valid_df(["AAA"]).to_csv(index=False))

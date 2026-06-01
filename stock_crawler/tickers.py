@@ -253,8 +253,8 @@ def resolve_tickers(cfg: CrawlConfig, refresh: bool = False) -> pd.DataFrame:
 
     캐시 파일 경로는 ``cfg.market_tickers_file`` 로 결정되며, ``exclude_etf``
     플래그에 따라 자동으로 분리된 파일명을 사용한다. ``refresh=True`` 일 때만
-    강제로 다시 받아 캐시를 갱신한다. ``ticker`` 컬럼이 없는 손상된 캐시는
-    무시하고 원격에서 다시 받아 덮어쓴다.
+    강제로 다시 받아 캐시를 갱신한다. 읽을 수 없거나(빈 파일·잘린 CSV 등)
+    ``ticker`` 컬럼이 없는 손상된 캐시는 무시하고 원격에서 다시 받아 덮어쓴다.
 
     Args:
         cfg: 시장/TOP-N/ETF 제외 등 수집 설정을 담은 ``CrawlConfig``.
@@ -266,15 +266,15 @@ def resolve_tickers(cfg: CrawlConfig, refresh: bool = False) -> pd.DataFrame:
     cfg.tickers_dir.mkdir(parents=True, exist_ok=True)
     out = cfg.market_tickers_file
     if not refresh and out.exists():
-        cached = pd.read_csv(out, dtype={"ticker": str})
-        if "ticker" not in cached.columns:
-            log.warning(
-                "Ignoring corrupt ticker cache %s: missing 'ticker' column (found %s)",
-                out,
-                list(cached.columns),
-            )
-        elif len(cached) >= cfg.top_n:
-            return cached.head(cfg.top_n)
+        try:
+            cached = pd.read_csv(out, dtype={"ticker": str})
+            if "ticker" not in cached.columns:
+                raise ValueError(f"missing 'ticker' column (found {list(cached.columns)})")
+        except Exception as e:  # noqa: BLE001
+            log.warning("Ignoring corrupt ticker cache %s: %s", out, e)
+        else:
+            if len(cached) >= cfg.top_n:
+                return cached.head(cfg.top_n)
 
     if cfg.market is Market.kospi:
         df = fetch_kospi_top(cfg.top_n, exclude_etf=cfg.exclude_etf)
