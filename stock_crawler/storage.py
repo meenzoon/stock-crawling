@@ -9,6 +9,27 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 
+def read_csv_or_none(path: Path, **kwargs: object) -> pd.DataFrame | None:
+    """CSV 를 읽되 읽기/파싱이 실패하면 경고 후 ``None`` 을 반환한다.
+
+    빈 파일(``EmptyDataError``)·잘린/파싱 불가 CSV(``ParserError``) 등 손상된
+    파일을 호출자가 일관되게 방어할 수 있도록 예외를 삼킨다. 호출자는 ``None`` 을
+    "데이터 없음/재수집 대상" 으로 해석한다.
+
+    Args:
+        path: 읽을 CSV 경로 (존재 여부는 호출자가 보장).
+        **kwargs: ``pandas.read_csv`` 에 그대로 전달되는 인자.
+
+    Returns:
+        성공 시 데이터프레임, 읽기/파싱 실패 시 ``None``.
+    """
+    try:
+        return pd.read_csv(path, **kwargs)
+    except Exception as e:  # noqa: BLE001
+        log.warning("Could not read %s: %s", path, e)
+        return None
+
+
 def csv_path(market_dir: Path, ticker: str) -> Path:
     """종목 CSV 파일 경로를 계산한다.
 
@@ -41,12 +62,8 @@ def last_recorded_date(market_dir: Path, ticker: str) -> date | None:
     p = csv_path(market_dir, ticker)
     if not p.exists():
         return None
-    try:
-        df = pd.read_csv(p, usecols=["date"], parse_dates=["date"])
-    except Exception as e:  # noqa: BLE001
-        log.warning("Could not read %s, treating as empty: %s", p, e)
-        return None
-    if df.empty:
+    df = read_csv_or_none(p, usecols=["date"], parse_dates=["date"])
+    if df is None or df.empty:
         return None
     return df["date"].max().date()
 

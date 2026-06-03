@@ -14,6 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from .config import CrawlConfig, Market
+from .storage import read_csv_or_none
 
 log = logging.getLogger(__name__)
 
@@ -266,15 +267,16 @@ def resolve_tickers(cfg: CrawlConfig, refresh: bool = False) -> pd.DataFrame:
     cfg.tickers_dir.mkdir(parents=True, exist_ok=True)
     out = cfg.market_tickers_file
     if not refresh and out.exists():
-        try:
-            cached = pd.read_csv(out, dtype={"ticker": str})
-            if "ticker" not in cached.columns:
-                raise ValueError(f"missing 'ticker' column (found {list(cached.columns)})")
-        except Exception as e:  # noqa: BLE001
-            log.warning("Ignoring corrupt ticker cache %s: %s", out, e)
-        else:
-            if len(cached) >= cfg.top_n:
-                return cached.head(cfg.top_n)
+        cached = read_csv_or_none(out, dtype={"ticker": str})
+        if cached is not None and "ticker" not in cached.columns:
+            log.warning(
+                "Ignoring ticker cache %s: missing 'ticker' column (found %s)",
+                out,
+                list(cached.columns),
+            )
+            cached = None
+        if cached is not None and len(cached) >= cfg.top_n:
+            return cached.head(cfg.top_n)
 
     if cfg.market is Market.kospi:
         df = fetch_kospi_top(cfg.top_n, exclude_etf=cfg.exclude_etf)

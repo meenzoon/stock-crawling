@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from stock_crawler.config import DATA_DIR, Market
-from stock_crawler.storage import csv_path
+from stock_crawler.storage import csv_path, read_csv_or_none
 
 log = logging.getLogger(__name__)
 
@@ -50,13 +50,9 @@ def load_ohlcv(
         log.warning("OHLCV file missing for %s/%s: %s", market.value, ticker, p)
         return pd.DataFrame()
 
-    try:
-        df = pd.read_csv(p, parse_dates=["date"])
-    except Exception as e:  # noqa: BLE001
-        log.warning("Could not read %s, treating as empty: %s", p, e)
+    df = read_csv_or_none(p, parse_dates=["date"])
+    if df is None or df.empty:
         return pd.DataFrame()
-    if df.empty:
-        return df
 
     df = df.sort_values("date").set_index("date")
     if lookback_days is not None and lookback_days > 0:

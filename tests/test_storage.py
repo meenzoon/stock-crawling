@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from stock_crawler.storage import csv_path, last_recorded_date, upsert
+from stock_crawler.storage import csv_path, last_recorded_date, read_csv_or_none, upsert
 
 
 def _idx_df(dates, closes):
@@ -14,6 +14,29 @@ def _idx_df(dates, closes):
         {"close": closes},
         index=pd.DatetimeIndex(pd.to_datetime(dates), name="date"),
     )
+
+
+# ---------- read_csv_or_none ----------
+
+
+def test_read_csv_or_none_reads_valid(tmp_path):
+    p = tmp_path / "ok.csv"
+    p.write_text("ticker,name\nAAA,Inc\n")
+    df = read_csv_or_none(p, dtype={"ticker": str})
+    assert df is not None
+    assert list(df["ticker"]) == ["AAA"]
+
+
+def test_read_csv_or_none_empty_file_returns_none(tmp_path):
+    p = tmp_path / "empty.csv"
+    p.write_text("")  # 0바이트 → EmptyDataError
+    assert read_csv_or_none(p) is None
+
+
+def test_read_csv_or_none_unparseable_returns_none(tmp_path):
+    p = tmp_path / "bad.csv"
+    p.write_text('ticker,name\n"AAA,Inc\n')  # 닫히지 않은 따옴표 → ParserError
+    assert read_csv_or_none(p) is None
 
 
 # ---------- csv_path ----------
