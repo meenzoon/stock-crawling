@@ -197,7 +197,7 @@ data/
 | `signal` | `buy`, `sell`, `hold` |
 | `score` | `-1.0`부터 `+1.0` 사이 점수 |
 | `reasons` | 전략별 판단 근거 |
-| 그 외 | `rsi`, `ema_fast`, `ema_slow`, `bb_*`, `atr7`, `roc5`, `stop_loss` 등 |
+| 그 외 | `rsi`, `ema_fast`, `ema_slow`, `bb_*`, `volume_ratio`, `roc1`, `atr7`, `roc5`, `stop_loss` 등 |
 
 저장 규칙:
 
@@ -224,8 +224,9 @@ uv run ruff format --check .
 
 ```bash
 uv run pytest tests/test_storage.py tests/test_data.py
+uv run pytest tests/test_fetcher.py tests/test_tickers.py
 uv run pytest tests/test_throttle.py
-uv run pytest tests/test_indicators.py tests/test_strategies.py
+uv run pytest tests/test_indicators.py tests/test_strategies.py tests/test_scanner.py
 uv run pytest tests/test_config.py
 ```
 
