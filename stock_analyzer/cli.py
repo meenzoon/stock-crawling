@@ -9,7 +9,7 @@ from stock_crawler.config import Market
 
 from .data import load_ohlcv
 from .scanner import DEFAULT_LOOKBACK_DAYS, scan
-from .strategies import STRATEGIES, run_strategy
+from .signals.strategies import STRATEGIES, run_strategy
 
 app = typer.Typer(
     add_completion=False,

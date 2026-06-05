@@ -10,7 +10,7 @@ from datetime import date
 import pandas as pd
 import yfinance as yf
 
-from .config import Market
+from ..config import Market
 
 log = logging.getLogger(__name__)
 

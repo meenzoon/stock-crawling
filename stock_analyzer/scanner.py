@@ -8,10 +8,10 @@ import pandas as pd
 from tqdm import tqdm
 
 from stock_crawler.config import DATA_DIR, CrawlConfig, Market
-from stock_crawler.tickers import resolve_tickers
+from stock_crawler.sources.tickers import resolve_tickers
 
 from .data import load_ohlcv
-from .strategies import StrategyResult, run_strategy
+from .signals.strategies import StrategyResult, run_strategy
 
 log = logging.getLogger(__name__)
 

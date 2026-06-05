@@ -2,7 +2,7 @@
 
 ## 배경
 
-`stock_analyzer.indicators.rsi()`는 RSI 계산 중 손실 평균(`avg_loss`)이 0인 구간을
+`stock_analyzer.signals.indicators.rsi()`는 RSI 계산 중 손실 평균(`avg_loss`)이 0인 구간을
 분모에서 제외하기 위해 `avg_loss.replace(0.0, pd.NA)`를 사용하고 있었습니다.
 
 이 방식은 float 기반 `Series`에 `pd.NA`를 섞어 object dtype 경로를 만들 수 있고,

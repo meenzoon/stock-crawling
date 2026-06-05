@@ -5,10 +5,10 @@ import sys
 
 import typer
 
-from .collector import collect
 from .config import CrawlConfig, Market
-from .scheduler import schedule_daily, schedule_interval
-from .tickers import resolve_tickers
+from .pipeline.collector import collect
+from .pipeline.scheduler import schedule_daily, schedule_interval
+from .sources.tickers import resolve_tickers
 
 app = typer.Typer(
     add_completion=False,

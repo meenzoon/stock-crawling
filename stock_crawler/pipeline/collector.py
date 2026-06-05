@@ -8,11 +8,11 @@ from typing import Any
 import pandas as pd
 from tqdm import tqdm
 
-from .config import CrawlConfig
-from .fetcher import fetch_history
-from .storage import last_recorded_date, upsert
+from ..config import CrawlConfig
+from ..sources.fetcher import fetch_history
+from ..sources.tickers import resolve_tickers
+from ..storage import last_recorded_date, upsert
 from .throttle import Throttler
-from .tickers import resolve_tickers
 
 log = logging.getLogger(__name__)
 

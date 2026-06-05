@@ -13,8 +13,8 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from .config import CrawlConfig, Market
-from .storage import read_csv_or_none
+from ..config import CrawlConfig, Market
+from ..storage import read_csv_or_none
 
 log = logging.getLogger(__name__)
 

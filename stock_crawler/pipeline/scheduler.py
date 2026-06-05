@@ -10,8 +10,8 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from ..config import CrawlConfig
 from .collector import collect
-from .config import CrawlConfig
 
 log = logging.getLogger(__name__)
 
