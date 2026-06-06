@@ -2,8 +2,8 @@
 
 import pandas as pd
 
-from stock_crawler import tickers
 from stock_crawler.config import CrawlConfig, Market
+from stock_crawler.sources import tickers
 
 
 def _cfg(tmp_path, top_n=3):

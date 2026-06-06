@@ -6,7 +6,7 @@
 
 import pytest
 
-from stock_crawler import throttle
+from stock_crawler.pipeline import throttle
 
 
 class FakeClock:

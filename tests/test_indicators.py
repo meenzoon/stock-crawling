@@ -5,7 +5,7 @@ import warnings
 import pandas as pd
 import pytest
 
-from stock_analyzer.indicators import atr, bollinger, ema, roc, rsi, volume_spike
+from stock_analyzer.signals.indicators import atr, bollinger, ema, roc, rsi, volume_spike
 
 
 def s(values):

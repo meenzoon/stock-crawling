@@ -60,26 +60,28 @@ KOSPI 일봉은 현재 pykrx가 아니라 yfinance를 통해 수집합니다. py
 
 ### `stock_crawler/`
 
+최상위에는 공유 모듈과 진입점만 두고, 역할이 또렷한 모듈은 하위 패키지로 묶는다.
+
 | 파일 | 역할 |
 |---|---|
 | `config.py` | `Market`, `CrawlConfig`, 데이터/티커/로그 경로 상수 |
-| `tickers.py` | KOSPI/NASDAQ TOP-N 티커 수집 및 캐시, ETF 제외 처리 |
-| `fetcher.py` | yfinance 심볼 변환과 OHLCV 다운로드 |
 | `storage.py` | 종목 CSV 경로 계산, 마지막 수집일 조회, upsert 저장 |
-| `throttle.py` | 호출 간격/분당 호출 수 제한. 멀티스레드 안전성을 유지해야 함 |
-| `collector.py` | 티커 해석, 증분 시작일 계산, throttle, 재시도, 저장 오케스트레이션 |
-| `scheduler.py` | apscheduler 기반 cron/interval 스케줄링 |
 | `cli.py` | `tickers`, `fetch`, `schedule` CLI |
+| `sources/fetcher.py` | yfinance 심볼 변환과 OHLCV 다운로드 |
+| `sources/tickers.py` | KOSPI/NASDAQ TOP-N 티커 수집 및 캐시, ETF 제외 처리 |
+| `pipeline/collector.py` | 티커 해석, 증분 시작일 계산, throttle, 재시도, 저장 오케스트레이션 |
+| `pipeline/scheduler.py` | apscheduler 기반 cron/interval 스케줄링 |
+| `pipeline/throttle.py` | 호출 간격/분당 호출 수 제한. 멀티스레드 안전성을 유지해야 함 |
 
 ### `stock_analyzer/`
 
 | 파일 | 역할 |
 |---|---|
 | `data.py` | CSV 로드 및 OHLCV 컬럼 검증 |
-| `indicators.py` | RSI, EMA, Bollinger Band, ATR, Volume spike, ROC 계산 |
-| `strategies.py` | `rsi`, `ema`, `bollinger`, `volume`, `composite` 전략 |
 | `scanner.py` | 시장 전체 스캔, 신호 CSV 저장 |
 | `cli.py` | `analyze`, `scan` CLI |
+| `signals/indicators.py` | RSI, EMA, Bollinger Band, ATR, Volume spike, ROC 계산 |
+| `signals/strategies.py` | `rsi`, `ema`, `bollinger`, `volume`, `composite` 전략 |
 
 ---
 

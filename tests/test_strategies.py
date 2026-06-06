@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from stock_analyzer.strategies import (
+from stock_analyzer.signals.strategies import (
     MIN_BARS,
     _insufficient,
     _last_float,

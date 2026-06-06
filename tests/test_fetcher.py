@@ -3,8 +3,8 @@
 import pandas as pd
 import pytest
 
-from stock_crawler import fetcher
-from stock_crawler.fetcher import OHLCV_COLUMNS, fetch_yfinance
+from stock_crawler.sources import fetcher
+from stock_crawler.sources.fetcher import OHLCV_COLUMNS, fetch_yfinance
 
 
 class _FakeTicker:
