@@ -209,7 +209,8 @@ data/
 
 ## 개발 / 테스트
 
-핵심 순수 로직에 대한 단위 테스트가 `tests/`에 있습니다.
+핵심 순수 로직에 대한 단위 테스트가 `tests/`에 있으며, 소스 패키지와 같은 구조로
+`tests/stock_crawler/`(수집기)와 `tests/stock_analyzer/`(분석기)로 나뉩니다.
 
 ```bash
 # 전체 테스트
@@ -223,11 +224,14 @@ uv run ruff format --check .
 변경 범위별 빠른 확인:
 
 ```bash
-uv run pytest tests/test_storage.py tests/test_data.py
-uv run pytest tests/test_fetcher.py tests/test_tickers.py
-uv run pytest tests/test_throttle.py
-uv run pytest tests/test_indicators.py tests/test_strategies.py tests/test_scanner.py
-uv run pytest tests/test_config.py
+# 수집기 관련 변경
+uv run pytest tests/stock_crawler
+
+# 분석기 관련 변경
+uv run pytest tests/stock_analyzer
+
+# 특정 모듈만
+uv run pytest tests/stock_analyzer/test_indicators.py tests/stock_analyzer/test_strategies.py
 ```
 
 외부 데이터 연동까지 확인해야 할 때는 소량으로 실행하세요.

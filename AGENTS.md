@@ -212,20 +212,27 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
+테스트는 소스와 같은 구조로 `tests/stock_crawler/`·`tests/stock_analyzer/`로 나뉜다.
+공유 픽스처(`make_ohlcv`)는 `tests/conftest.py`에 두어 양쪽 모두에서 쓸 수 있다.
+
 변경 범위별 추가 검증:
 
 ```bash
+# 수집기 / 분석기 전체
+uv run pytest tests/stock_crawler
+uv run pytest tests/stock_analyzer
+
 # 저장/CSV 로직
-uv run pytest tests/test_storage.py tests/test_data.py
+uv run pytest tests/stock_crawler/test_storage.py tests/stock_analyzer/test_data.py
 
 # throttle 변경
-uv run pytest tests/test_throttle.py
+uv run pytest tests/stock_crawler/test_throttle.py
 
 # 지표/전략 변경
-uv run pytest tests/test_indicators.py tests/test_strategies.py
+uv run pytest tests/stock_analyzer/test_indicators.py tests/stock_analyzer/test_strategies.py
 
 # 설정/경로 변경
-uv run pytest tests/test_config.py
+uv run pytest tests/stock_crawler/test_config.py
 ```
 
 외부 연동까지 확인해야 할 때만 소량으로 실행:
