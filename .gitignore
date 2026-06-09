@@ -266,3 +266,6 @@ data/
 
 # 
 .agents
+
+# 프로젝트 관련 md 파일 모음
+docs/*.md
