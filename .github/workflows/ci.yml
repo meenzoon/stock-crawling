@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  lint:
-    name: Ruff (lint + format)
+  checks:
+    name: Lint + Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,3 +26,6 @@ jobs:
 
       - name: Ruff format check
         run: uv run ruff format --check --exclude tests .
+
+      - name: Run tests
+        run: uv run pytest
