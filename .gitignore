@@ -264,7 +264,7 @@ data/
 !.claude/commands/
 .claude/commands/*
 
-# 
+# CODEX
 .agents
 
 # 프로젝트 관련 md 파일 모음
